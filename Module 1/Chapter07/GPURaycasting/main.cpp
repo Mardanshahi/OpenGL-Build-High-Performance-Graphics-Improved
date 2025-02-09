@@ -8,6 +8,7 @@
 
 #include "..\src\GLSLShader.h"
 #include <fstream>
+#include <algorithm> // For std::fill
 
 #define GL_CHECK_ERRORS assert(glGetError()== GL_NO_ERROR);
 
@@ -22,7 +23,7 @@ const int HEIGHT = 720;
 
 //camera transform variables
 int state = 0, oldX=0, oldY=0;
-float rX=0, rY=0, dist = -2;
+float rX=0, rY=0, dist = -1.5;
 
 
 //modelview projection matrices
@@ -99,6 +100,8 @@ bool LoadVolume() {
 	if(infile.good()) {
 		//read the volume data file
 		GLubyte* pData = new GLubyte[XDIM*YDIM*ZDIM];
+		std::fill(pData, pData + (XDIM * YDIM * ZDIM), static_cast<GLushort>(1));
+
 		infile.read(reinterpret_cast<char*>(pData), XDIM*YDIM*ZDIM*sizeof(GLubyte));
 		infile.close();
 		
@@ -140,6 +143,8 @@ bool LoadVolumeUShort() {
 	if (infile.good()) {
 		//read the volume data file
 		GLushort* pData = new GLushort[XDIM * YDIM * ZDIM];
+		std::fill(pData, pData + (XDIM * YDIM * ZDIM), static_cast<GLushort>(100000));
+
 		infile.read(reinterpret_cast<char*>(pData), XDIM * YDIM * ZDIM * sizeof(GLushort));
 		infile.close();
 
@@ -152,19 +157,19 @@ bool LoadVolumeUShort() {
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 		//set the mipmap levels (base and max)
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 4);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 4);
 
 		//allocate data with internal format and foramt as (GL_RED)	
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, XDIM, YDIM, ZDIM, 0, GL_RED, GL_UNSIGNED_SHORT, pData);
 		std::cout << glGetError() << std::endl;
 		GL_CHECK_ERRORS
 
-			//generate mipmaps
-			glGenerateMipmap(GL_TEXTURE_3D);
+		//generate mipmaps
+		//glGenerateMipmap(GL_TEXTURE_3D);
 
 		//delete the volume data allocated on heap
 		delete[] pData;
@@ -281,7 +286,7 @@ void OnInit() {
 	shader.AddUniform("lut");
 
 	//pass constant uniforms at initialization
-	glUniform3f(shader("step_size"), 2.0f/XDIM, 2.0f/YDIM, 2.0f/ZDIM);
+	glUniform3f(shader("step_size"), 1.0f/XDIM, 1.0f/YDIM, 1.0f/ZDIM);
 	glUniform1i(shader("volume"),0);
 	glUniform1i(shader("lut"), 1);
 
