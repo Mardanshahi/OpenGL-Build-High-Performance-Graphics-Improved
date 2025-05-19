@@ -1,6 +1,6 @@
 #version 330 core
 
-layout(location = 0) out vec4 vFragColor;	//fragment shader output
+out vec4 vFragColor;	//fragment shader output
 
 in vec3 vUV;				//3D texture coordinates form vertex shader 
 								//interpolated by rasterizer
@@ -16,66 +16,7 @@ const int MAX_SAMPLES = 1000;	//total samples for each ray march step
 const vec3 texMin = vec3(0);	//minimum texture access coordinate
 const vec3 texMax = vec3(1);	//maximum texture access coordinate
 
-#define use_cubic_filt 0
 
-float interpolate_cubic(sampler3D tex, vec3 coord,vec3 cell_size1)
-{
-	
-	// transform the coordinate from [0,extent] to [-0.5, extent-0.5]
-	vec3 coord_grid = coord/cell_size1-vec3(0.5);
-	vec3 index = floor(coord_grid);
-	vec3 fraction = coord_grid - index;
-	vec3 one_frac = vec3(1.0) - fraction;
-	vec3 one_frac2 = one_frac * one_frac;
-	vec3 fraction2 = fraction * fraction;
-
-	vec3 w0 = 1.0/6.0 * one_frac2 * one_frac;
-	vec3 w1 = vec3(2.0/3.0) - 0.5 * fraction2 * (2.0-fraction);
-	vec3 w2 = vec3(2.0/3.0) - 0.5 * one_frac2 * (2.0-one_frac);
-	vec3 w3 = 1.0/6.0 * fraction2 * fraction;
-	vec3 g0 = w0 + w1;
-	vec3 g1 = w2 + w3;
-	// h0 = w1/g0 - 1, move from [-0.5, extent-0.5] to [0, extent]
-	vec3 h0 = (w1 / g0) - vec3(0.5) + index;
-	vec3 h1 = (w3 / g1) + vec3(1.5) + index;
-	h0*=cell_size1;
-	h1*=cell_size1;
-
-	// fetch the four linear interpolations
-	
-	float tex000 = texture(tex, h0).x;
-	float tex100 = texture(tex, vec3(h1.x, h0.y,h0.z)).x;
-	float tex010 = texture(tex, vec3(h0.x, h1.y,h0.z)).x;
-	float tex110 = texture(tex, vec3(h1.x,h1.y,h0.z)).x;
-						  
-	float tex001 = texture(tex, vec3(h0.x,h0.y,h1.z)).x;
-	float tex101 = texture(tex, vec3(h1.x,h0.y,h1.z)).x;
-	float tex011 = texture(tex, vec3(h0.x,h1.y,h1.z)).x;
-	float tex111 = texture(tex, h1).x;
-	// weigh along the z-direction
-	tex000 = mix(tex001, tex000, g0.z);
-	tex100 = mix(tex101, tex100, g0.z);
-	tex010 = mix(tex011, tex010, g0.z);
-	tex110 = mix(tex111, tex110, g0.z);
-
-	// weigh along the y-direction
-	tex000 = mix(tex010, tex000, g0.y);
-	tex100 = mix(tex110, tex100, g0.y);
-	// weigh along the x-direction
-	return mix(tex100, tex000, g0.x);
-}
-
-float Equ(vec3 arg, vec3 dirStep )
-{
-	float block = 128.0;
-    vec3 cell_size_block = dirStep; //vec3(1/block, 1/block, 1/block);
-
-	#if use_cubic_filt
-		return interpolate_cubic(volume, arg,cell_size_block);
-	#else
-		return texture(volume, arg).r;
-	#endif
-}
 float rand() {
     /* the internet **really** likes this one, still no source to be
      * found, probably Rey 1998, cited by TestU01 but nothing
@@ -129,7 +70,7 @@ void main()
 			break;
 		
 		// data fetching from the red channel of volume texture
-		vec4 sample = texture(lut, Equ(dataPos, dirStep*4));	
+		vec4 sample = texture(lut, texture(volume, dataPos).r);	
 
 		//Opacity calculation using compositing:
 		//here we use front to back compositing scheme whereby the current sample
